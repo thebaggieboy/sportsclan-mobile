@@ -44,6 +44,8 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="auth" options={{ presentation: "modal" }} />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="billing/[id]" />
           <Stack.Screen name="tournament/[id]" />
         </Stack>
       </AuthProvider>

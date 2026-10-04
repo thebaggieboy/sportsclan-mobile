@@ -15,6 +15,8 @@ import {
 
 import { useAuth } from "@/components/AuthContext";
 import { AppButton, AppScreen, EmptyState, ErrorBanner, PageHeader, TextField, uiStyles } from "@/components/Ui";
+import VenueLocationMap from "@/components/VenueLocationMap";
+import { getCountryMapCenter, VenueCoordinates } from "@/components/venueMapTypes";
 import { Country, estimateVenueFee, fetchAllPages, formatDuration, formatPrice, formatVenueRate, Sport, Tournament, Venue } from "@/constants/api";
 import { colors, fonts } from "@/constants/theme";
 
@@ -42,6 +44,9 @@ export default function CreateTournamentScreen() {
   const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [venueName, setVenueName] = useState("");
+  const [venueState, setVenueState] = useState("");
+  const [venueCoordinates, setVenueCoordinates] = useState<VenueCoordinates | null>(null);
   const [city, setCity] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -93,6 +98,9 @@ export default function CreateTournamentScreen() {
     setCountrySearch("");
     setSelectedVenue(null);
     setVenues([]);
+    setVenueName("");
+    setVenueState("");
+    setVenueCoordinates(null);
   };
 
   const searchVenues = async () => {
@@ -100,6 +108,9 @@ export default function CreateTournamentScreen() {
     setLoadingVenues(true);
     setError("");
     setSelectedVenue(null);
+    setVenueName("");
+    setVenueState("");
+    setVenueCoordinates(null);
     try {
       const params = new URLSearchParams({ "sports__slug": selectedSport.slug });
       params.set("country_reference__code", selectedCountry.code);
@@ -111,6 +122,18 @@ export default function CreateTournamentScreen() {
     } finally {
       setLoadingVenues(false);
     }
+  };
+
+  const selectVenue = (venue: Venue) => {
+    setSelectedVenue(venue);
+    setCity(venue.city);
+    setVenueName(venue.venue_name || venue.name);
+    setVenueState(venue.state || venue.region || "");
+    setVenueCoordinates(
+      venue.latitude !== null && venue.longitude !== null
+        ? { latitude: Number(venue.latitude), longitude: Number(venue.longitude) }
+        : null,
+    );
   };
 
   const onDateChange = (_event: DateTimePickerEvent, date?: Date) => {
@@ -152,8 +175,20 @@ export default function CreateTournamentScreen() {
       router.push("/auth");
       return;
     }
-    if (!selectedCountry || !selectedSport || !selectedVenue || !currency) {
-      setError("Choose a country, sport, venue, and currency before creating your tournament.");
+    if (!selectedCountry || !selectedSport || !currency) {
+      setError("Choose a country, sport, and currency before creating your tournament.");
+      return;
+    }
+    if (!city.trim()) {
+      setError("Enter the venue city.");
+      return;
+    }
+    if (!venueName.trim()) {
+      setError("Enter a venue name.");
+      return;
+    }
+    if (!venueCoordinates) {
+      setError("Tap the map to choose the exact venue location.");
       return;
     }
     const fee = Number(entryFee);
@@ -176,7 +211,12 @@ export default function CreateTournamentScreen() {
           description: description.trim(),
           country_id: selectedCountry.code,
           sport_id: selectedSport.id,
-          venue_id: selectedVenue.id,
+          venue_id: selectedVenue?.id ?? null,
+          venue_city: city.trim(),
+          venue_name: venueName.trim(),
+          state: venueState.trim(),
+          latitude: venueCoordinates.latitude,
+          longitude: venueCoordinates.longitude,
           starts_at: startsAt.toISOString(),
           duration_minutes: durationMinutes,
           entry_fee: fee.toFixed(2),
@@ -214,7 +254,7 @@ export default function CreateTournamentScreen() {
                 <Text style={styles.label}>Choose a sport</Text>
                 {loadingSports ? <ActivityIndicator color={colors.blue} /> : sports.length ? (
                   <View style={styles.optionGrid}>{sports.map((sport) => (
-                    <Pressable key={sport.id} onPress={() => { setSelectedSport(sport); setSelectedVenue(null); setVenues([]); }} style={[styles.option, selectedSport?.id === sport.id && styles.optionSelected]}>
+                    <Pressable key={sport.id} onPress={() => { setSelectedSport(sport); setSelectedVenue(null); setVenues([]); setVenueName(""); setVenueState(""); setVenueCoordinates(null); }} style={[styles.option, selectedSport?.id === sport.id && styles.optionSelected]}>
                       <Text style={[styles.optionText, selectedSport?.id === sport.id && styles.optionTextSelected]}>{sport.name}</Text>
                     </Pressable>
                   ))}</View>
@@ -223,17 +263,31 @@ export default function CreateTournamentScreen() {
 
               <View style={styles.formSection}>
                 <Text style={styles.label}>Choose a local venue</Text>
-                <Text style={styles.helpText}>Find a nearby stadium, court, or field that supports your sport.</Text>
+                <Text style={styles.helpText}>Search for an existing venue or place a new venue pin in the selected country.</Text>
                 <View style={styles.citySearch}><TextField label="City" placeholder="Enter a city" value={city} onChangeText={setCity} returnKeyType="search" onSubmitEditing={searchVenues} /><AppButton label="Find" icon="search" onPress={searchVenues} disabled={!selectedSport || !selectedCountry} style={styles.findButton} /></View>
                 {loadingVenues ? <ActivityIndicator color={colors.blue} /> : null}
                 {!loadingVenues && venues.length ? venues.map((venue) => (
-                  <Pressable key={venue.id} onPress={() => setSelectedVenue(venue)} style={[styles.venueRow, selectedVenue?.id === venue.id && styles.venueSelected]}>
+                  <Pressable key={venue.id} onPress={() => selectVenue(venue)} style={[styles.venueRow, selectedVenue?.id === venue.id && styles.venueSelected]}>
                     <View style={styles.venueIcon}><Ionicons name="location-outline" size={18} color={colors.blue} /></View>
                     <View style={styles.venueCopy}><Text style={styles.venueName}>{venue.name}</Text><Text style={styles.venueAddress}>{[venue.address, venue.city, venue.region].filter(Boolean).join(", ")}</Text><Text style={styles.venueRate}>{formatVenueRate(venue)}</Text></View>
                     {selectedVenue?.id === venue.id ? <Ionicons name="checkmark-circle" size={21} color={colors.blue} /> : null}
                   </Pressable>
                 )) : null}
                 {!loadingVenues && !venues.length ? <Text style={styles.helpText}>{selectedCountry ? "Search to see venues in this country. Venues need to be added by an admin." : "Choose a country to find local venues."}</Text> : null}
+                {selectedCountry ? (
+                  <View style={styles.venueLocationFields}>
+                    <TextField label="Venue name" placeholder="Venue name" value={venueName} onChangeText={setVenueName} maxLength={160} />
+                    <TextField label="State / province" placeholder="State or province" value={venueState} onChangeText={setVenueState} maxLength={100} autoCapitalize="words" />
+                    <VenueLocationMap
+                      key={`${selectedCountry.code}-${selectedVenue?.id ?? "new"}`}
+                      countryCode={selectedCountry.code}
+                      countryName={selectedCountry.name}
+                      initialCoordinates={selectedVenue?.latitude !== null && selectedVenue?.longitude !== null && selectedVenue ? { latitude: Number(selectedVenue.latitude), longitude: Number(selectedVenue.longitude) } : getCountryMapCenter(selectedCountry.code)}
+                      coordinates={venueCoordinates}
+                      onChange={setVenueCoordinates}
+                    />
+                  </View>
+                ) : <Text style={styles.helpText}>Choose a country to enter venue details and set a map pin.</Text>}
                 {selectedVenue ? (() => {
                   const estimate = estimateVenueFee(selectedVenue.pricing_type, selectedVenue.price_amount, durationMinutes);
                   return <View style={styles.venueEstimate}><Text style={styles.estimateLabel}>Estimated venue cost</Text><Text style={styles.estimateAmount}>{estimate === null ? "Ask venue for a quote" : formatPrice(estimate, selectedVenue.price_currency)}</Text><Text style={styles.estimateNote}>Paid separately by the host. It is not taken from player entry fees.</Text></View>;
@@ -321,6 +375,7 @@ const styles = StyleSheet.create({
   venueSelected: { borderColor: colors.blue, backgroundColor: colors.blueSoft },
   venueIcon: { width: 35, height: 35, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: colors.blueSoft },
   venueCopy: { flex: 1, gap: 4 },
+  venueLocationFields: { gap: 10 },
   venueName: { color: colors.ink, fontFamily: fonts.medium, fontSize: 11 },
   venueAddress: { color: colors.muted, fontFamily: fonts.regular, fontSize: 9 },
   venueRate: { color: colors.blue, fontFamily: fonts.medium, fontSize: 9 },

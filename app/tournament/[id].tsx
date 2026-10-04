@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 
 import { useAuth } from "@/components/AuthContext";
 import { AppButton, AppScreen, ErrorBanner, PageHeader, TextField, uiStyles } from "@/components/Ui";
-import { ApiError, formatDate, formatDuration, formatPrice, formatVenueRate, Tournament } from "@/constants/api";
+import { ApiError, formatDate, formatDuration, formatPrice, formatVenueRate, Tournament, TournamentEntry } from "@/constants/api";
 import { colors, fonts } from "@/constants/theme";
 
 export default function TournamentDetailScreen() {
@@ -46,11 +46,15 @@ export default function TournamentDetailScreen() {
     setBusy(true);
     setError("");
     try {
-      await request(`/tournaments/${tournament.id}/join/`, {
+      const entry = await request<TournamentEntry>(`/tournaments/${tournament.id}/join/`, {
         method: "POST",
         body: JSON.stringify({ slot_number: selectedSlot }),
       });
-      await load();
+      if (entry.payment_status === "not_required") {
+        await load();
+      } else {
+        router.push({ pathname: "/billing/[id]", params: { id: String(tournament.id) } });
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not claim this spot.");
     } finally {
@@ -140,7 +144,7 @@ export default function TournamentDetailScreen() {
           <View style={styles.infoCard}>
             <View style={styles.infoLine}><View style={styles.infoIcon}><Ionicons name="calendar-outline" size={18} color={colors.blue} /></View><View style={styles.infoCopy}><Text style={styles.infoLabel}>DATE & TIME</Text><Text style={styles.infoValue}>{formatDate(tournament.starts_at)}</Text></View></View>
             <View style={styles.rule} />
-            <View style={styles.infoLine}><View style={styles.infoIcon}><Ionicons name="location-outline" size={18} color={colors.blue} /></View><View style={styles.infoCopy}><Text style={styles.infoLabel}>VENUE</Text><Text style={styles.infoValue}>{tournament.venue.name}</Text><Text style={styles.infoSub}>{[tournament.venue.address, tournament.venue.city, tournament.venue.region, tournament.venue.country].filter(Boolean).join(", ")}</Text></View></View>
+            <View style={styles.infoLine}><View style={styles.infoIcon}><Ionicons name="location-outline" size={18} color={colors.blue} /></View><View style={styles.infoCopy}><Text style={styles.infoLabel}>VENUE</Text><Text style={styles.infoValue}>{tournament.venue_name || tournament.venue.name}</Text><Text style={styles.infoSub}>{[tournament.venue.address, tournament.venue.city, tournament.state || tournament.venue.state || tournament.venue.region, tournament.venue.country].filter(Boolean).join(", ")}</Text>{tournament.latitude !== null && tournament.longitude !== null ? <Text style={styles.infoSub}>Map pin: {Number(tournament.latitude).toFixed(6)}, {Number(tournament.longitude).toFixed(6)}</Text> : null}</View></View>
             <View style={styles.rule} />
             <View style={styles.infoLine}><View style={styles.infoIcon}><Ionicons name="globe-outline" size={18} color={colors.blue} /></View><View style={styles.infoCopy}><Text style={styles.infoLabel}>COUNTRY</Text><Text style={styles.infoValue}>{venueCountry}</Text><Text style={styles.infoSub}>{tournament.country?.default_currency ?? tournament.venue.country_info?.default_currency ?? tournament.currency} currency</Text></View></View>
             <View style={styles.rule} />
@@ -188,7 +192,7 @@ export default function TournamentDetailScreen() {
           <View style={styles.paymentNote}><Ionicons name="information-circle-outline" size={17} color={colors.orange} /><Text style={styles.paymentText}>Your spot is reserved with payment marked pending. SportsClan does not collect money yet.</Text></View>
           {error ? <ErrorBanner message={error} /> : null}
 
-          {tournament.is_joined ? <AppButton label="Leave tournament" icon="exit-outline" variant="danger" busy={busy} disabled={tournamentHasStarted} onPress={leave} /> : <AppButton label={user ? selectedSlot ? `Claim spot ${selectedSlot}` : "Choose an open spot" : "Sign in to join"} icon="arrow-forward" busy={busy} disabled={user ? !selectedSlot || tournament.status !== "open" || tournamentHasStarted : false} onPress={user ? join : () => router.push("/auth")} />}
+          {tournament.is_joined ? tournament.my_payment_status === "pending" ? <AppButton label="Complete payment" icon="card-outline" variant="secondary" onPress={() => router.push({ pathname: "/billing/[id]", params: { id: String(tournament.id) } })} /> : tournament.my_payment_status === "paid" ? <AppButton label="Entry paid" icon="checkmark-circle-outline" variant="quiet" disabled /> : <AppButton label="Leave tournament" icon="exit-outline" variant="danger" busy={busy} disabled={tournamentHasStarted} onPress={leave} /> : <AppButton label={user ? selectedSlot ? `Reserve spot ${selectedSlot}` : "Choose an open spot" : "Sign in to join"} icon="arrow-forward" busy={busy} disabled={user ? !selectedSlot || tournament.status !== "open" || tournamentHasStarted : false} onPress={user ? join : () => router.push("/auth")} />}
           {isHost ? <AppButton label="Delete tournament" icon="trash-outline" variant="secondary" onPress={removeTournament} disabled={busy} /> : null}
         </ScrollView>
       ) : (

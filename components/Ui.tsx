@@ -112,7 +112,7 @@ export function TournamentCard({ tournament, onPress }: { tournament: Tournament
       </View>
       <Text style={styles.tournamentTitle}>{tournament.title}</Text>
       <View style={styles.cardMeta}><Ionicons name="calendar-outline" size={15} color={colors.muted} /><Text style={styles.cardMetaText}>{formatDate(tournament.starts_at)}</Text></View>
-      <View style={styles.cardMeta}><Ionicons name="location-outline" size={15} color={colors.muted} /><Text style={styles.cardMetaText} numberOfLines={1}>{tournament.venue.name}, {tournament.venue.city}</Text></View>
+      <View style={styles.cardMeta}><Ionicons name="location-outline" size={15} color={colors.muted} /><Text style={styles.cardMetaText} numberOfLines={1}>{tournament.venue_name || tournament.venue.name}, {[tournament.venue.city, tournament.state || tournament.venue.state || tournament.venue.region].filter(Boolean).join(", ")}</Text></View>
       <View style={styles.cardFooter}>
         <Text style={styles.hostText}>Hosted by {tournament.host}</Text>
         <View style={styles.spotCount}><Ionicons name="people-outline" size={14} color={colors.blue} /><Text style={styles.spotCountText}>{tournament.slots_open} spots open</Text></View>
@@ -130,10 +130,10 @@ export const uiStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.paper },
-  pageHeader: { minHeight: 65, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  headerCopy: { flex: 1, gap: 5 },
-  eyebrow: { color: colors.blue, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 1.3 },
-  pageTitle: { color: colors.ink, fontFamily: fonts.bold, fontSize: 24, letterSpacing: 0, lineHeight: 1.15 },
+  pageHeader: { minHeight: 72, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  headerCopy: { flex: 1, gap: 5, paddingVertical: 3 },
+  eyebrow: { color: colors.blue, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 1.3, lineHeight: 15 },
+  pageTitle: { color: colors.ink, fontFamily: fonts.bold, fontSize: 24, letterSpacing: 0, lineHeight: 34 },
   button: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, paddingHorizontal: 17, borderRadius: 7, backgroundColor: colors.blue },
   buttonSecondary: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white },
   buttonQuiet: { backgroundColor: colors.blueSoft },

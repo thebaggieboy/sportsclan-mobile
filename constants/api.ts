@@ -1,6 +1,25 @@
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
-const localHost = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+function getExpoDevelopmentHost() {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (!hostUri) return null;
+
+  try {
+    return new URL(`http://${hostUri}`).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const expoDevelopmentHost = Platform.OS !== "web" && __DEV__ ? getExpoDevelopmentHost() : null;
+const localHost = Platform.OS === "web"
+  ? "http://127.0.0.1:8000"
+  : expoDevelopmentHost
+    ? `http://${expoDevelopmentHost}:8000`
+    : Platform.OS === "android"
+      ? "http://10.0.2.2:8000"
+      : "http://127.0.0.1:8000";
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || `${localHost}/api/v1`).replace(/\/+$/, "");
 
 export type ApiRequestOptions = Omit<RequestInit, "headers"> & {
@@ -63,9 +82,11 @@ export interface Country {
 export interface Venue {
   id: number;
   name: string;
+  venue_name: string;
   address: string;
   city: string;
   region: string;
+  state: string;
   country: string;
   country_info: Country | null;
   latitude: string | null;
@@ -83,6 +104,10 @@ export interface Tournament {
   host: string;
   sport: Sport;
   venue: Venue;
+  venue_name: string;
+  state: string;
+  latitude: string | null;
+  longitude: string | null;
   country: Country | null;
   starts_at: string;
   duration_minutes: number;
@@ -102,6 +127,7 @@ export interface Tournament {
   status: "open" | "full" | "cancelled" | "completed";
   is_joined: boolean;
   my_slot: number | null;
+  my_payment_status: "pending" | "paid" | "refunded" | "not_required" | null;
   created_at: string;
   updated_at: string;
 }
@@ -111,8 +137,30 @@ export interface TournamentEntry {
   username: string;
   slot_number: number;
   entry_fee_at_join: string;
-  payment_status: "pending" | "paid" | "refunded";
+  payment_status: "pending" | "paid" | "refunded" | "not_required";
+  reservation_expires_at: string | null;
   joined_at: string;
+}
+
+export interface TournamentBillingStatus {
+  payment_status: "pending" | "paid" | "refunded" | "not_required";
+  reservation_expires_at: string | null;
+  reservation_expired: boolean;
+  slot_number: number;
+  entry_fee: string;
+  currency: string;
+  reference: string | null;
+  transaction_status: "pending" | "success" | "failed" | "success_unallocated" | null;
+  authorization_url: string | null;
+}
+
+export interface PaystackCheckout {
+  reference: string;
+  authorization_url: string;
+  payment_status: "pending" | "paid" | "not_required";
+  amount: string;
+  currency: string;
+  reservation_expires_at: string | null;
 }
 
 function resolveUrl(path: string) {

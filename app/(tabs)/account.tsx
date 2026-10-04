@@ -20,6 +20,7 @@ export default function AccountScreen() {
               <View style={styles.profileCopy}><Text style={styles.username}>{user.first_name || user.username}</Text><Text style={styles.detail}>@{user.username}</Text><Text style={styles.detail}>{user.email}</Text></View>
             </View>
             <View style={styles.note}><Text style={styles.noteTitle}>Entry fees</Text><Text style={styles.noteText}>SportsClan records tournament prices, but it does not collect payments yet. Entries stay marked as pending.</Text></View>
+            <AppButton label="Settings" icon="settings-outline" variant="secondary" onPress={() => router.push("/settings")} />
             <AppButton label="Sign out" icon="log-out-outline" variant="secondary" onPress={signOut} />
           </>
         ) : (
@@ -27,6 +28,7 @@ export default function AccountScreen() {
             <Text style={styles.signInTitle}>Play with your crew.</Text>
             <Text style={styles.detail}>Sign in to create tournaments, claim a spot, and keep track of your games.</Text>
             <AppButton label="Sign in or create account" icon="arrow-forward" onPress={() => router.push("/auth")} />
+            <AppButton label="Settings" icon="settings-outline" variant="secondary" onPress={() => router.push("/settings")} />
           </View>
         )}
       </ScrollView>
